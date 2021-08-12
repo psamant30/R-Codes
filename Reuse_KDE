@@ -1,0 +1,185 @@
+library(tidyverse)
+library(tidycensus)
+library(tigris)
+library(sf)
+library(viridis)
+library(scales)
+library(knitr)
+
+pop_block_2010 <- get_decennial(year = 2020, geography = "block", state = "NJ", county = "Cumberland", variables = "P001001") 
+pop_cbg_2010 <- nbr1 %>%
+  mutate(cbg = substr(GEOID, 1, 12)) %>%
+  group_by(cbg) %>%
+  dplyr::summarize(population = sum(estimate)) %>%
+  rename(GEOID = cbg)
+
+NJ_block %>%
+  ggplot(aes(x = pop_acre_rate)) +
+  geom_histogram() +
+  geom_vline(
+    mapping = aes(xintercept = median(pop_acre_rate)),
+    linetype = "dashed"
+  )+
+  xlab("Population Density Per Square Mile") +
+  ylab("Number of Census Block Groups") 
+
+NJ_block %>%
+  
+  ggplot(aes(fill = pop_acre_rate, geometry = geometry)) +
+  geom_sf(size = 0) +
+  geom_sf(data = fishnet_pop, color = "white", size = 0.5, fill = NA) +
+  scale_fill_viridis(trans = "log10", option = "plasma", name = "Population\nPer Sq Mi", limits = c(10, 100), breaks = c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100), labels = comma)
+
+ggplot(cps, aes(x = X, y = Y)) + 
+  geom_point() + 
+  coord_equal() + 
+  xlab('X') + 
+  ylab('Y')
+
+
+
+ggplot(cps, aes(x = X, y = Y)) + 
+  coord_equal() + 
+  xlab('Longitude') + 
+  ylab('Latitude') + 
+  stat_density2d(aes(fill = ..level..), alpha = .5,
+                 geom = "polygon", data = cps) + 
+  scale_fill_viridis_c() + 
+  theme(legend.position = 'none')
+
+
+ggplot(cps, aes(x = X, y = Y)) + 
+  coord_equal() + 
+  xlab('Longitude') + 
+  ylab('Latitude') + 
+  stat_density2d(aes(fill = ..level..), alpha = .5,
+                 h = .02, n = 300,
+                 geom = "polygon", data = cps) + 
+  scale_fill_viridis_c() + 
+  theme(legend.position = 'none')
+
+ggplot(cps, aes(x = X, y = Y)) + 
+  geom_point(size = 0.1, alpha = 0.05) + 
+  coord_equal() + 
+  xlab('Longitude') + 
+  ylab('Latitude') + 
+  coord_cartesian(xlim = c(-95.1, -95.7), 
+                  ylim = c(29.5, 30.1))
+
+
+plot(qqnorm(net_blocks_intersect$pop_acre_rate))
+plot(qqline(net_blocks_intersect$pop_acre_rate))
+
+hist(net_blocks_intersect$pop_acre_rate, breaks='FD')
+dev.off()
+
+library(tidyverse)
+library(sf)
+#> Linking to GEOS 3.6.1, GDAL 2.2.3, proj.4 4.9.3
+nc <- nbr1
+set.seed(1000)
+points <- tibble(
+  X = runif(1000, min = st_bbox(cps)[1], max = st_bbox(cps)[3]),
+  Y = runif(1000, min = st_bbox(cps)[2], max = st_bbox(cps)[4])
+) %>%
+  st_as_sf(coords = c("X", "Y"), crs = 3857)
+
+plot(nc$geometry)
+plot(points$geometry, add = TRUE)
+
+CRSobj <- CRS("+proj=gnom +lat_0=39.55 +lon_0=-75.35")
+cps@proj4string <- CRSobj
+
+# Assignment modified according
+coordinates(cps) <- ~ X + Y
+# Set the projection of the SpatialPointsDataFrame using the projection of the shapefile
+proj4string(cps) <- proj4string(CRSobj)
+cps%>%
+  mutate(pt_count = lengths(st_contains(cps, points))) %>%
+  select(pt_count) %>%
+  plot()
+
+plot(points$geometry)
+points(cps$X ~ cps$Y, col = "red", cex = 1)
+
+pnts_sf= st_transform(pnts_sf, crs='ESRI:102311') 
+dsf = st_transform(dsf, crs='ESRI:102311') 
+nc1 = read_sf("NJ-Cumberland_Census_Block_Groups_2019/Census_Block_Groups_2019.shp")
+
+pnts_sf <- st_as_sf(cps, coords = c('X', 'Y'), crs = st_crs(nc1))
+
+pnts <- pnts_sf %>% mutate(
+  intersection = as.integer(st_intersection(pnts_sf$geometry, nc1))
+) 
+dsf <- sf::st_as_sf(cps, coords=c("X","Y"), crs='ESRI:102311')
+int <- sf::st_intersects(dsf, nc1)
+plot(int)
+st_agr(nc1) = "constant"
+st_agr(pnts) = "constant"
+plot(pnts)
+a = st_intersects(nc1$geometry, pnts$geometry)
+
+
+
+
+xys = st_as_sf(cps, coords=c("X","Y"))
+
+ggplot(cps, aes(Intake.Algtn.Rqst, stat='count')) + geom_histogram()
+library('forecast')
+
+ggplot(cps, aes(x = X, y = Y, group = Intake.Algtn.Rqst, fill = Intake.Algtn.Rqst)) + 
+  geom_polygon(color="white") + 
+  coord_map()
+describe(cps)
+wq = count(cps, "geometry")
+hist(cps$Intake.Algtn.Rqst, plot=TRUE)
+
+skewness(net_blocks_intersect$pop_acre_rate)
+
+hist(net_blocks_intersect$pop_acre_rate, breaks='FD')
+dev.new()
+
+kurtosis(net_blocks_intersect$pop_acre_rate)
+
+datasim <- data.frame(net_blocks_intersect$pop_acre_rate)
+ggplot(net_blocks_intersect, aes(pop_acre_rate)) +
+  geom_density() +
+  stat_function(fun = dnorm, args = list(mean = mean(net_blocks_intersect$pop_acre_rate, na.rm = T), 
+                                         sd = sd(net_blocks_intersect$pop_acre_rate, na.rm = T)), color = "red") 
+
+ggplot(net_blocks_intersect, aes(pop_acre_rate)) + stat_bin(bins = 20)+
+  geom_histogram() 
+
+skewness(net_blocks_intersect$pop_acre_rate, na.rm = TRUE)
+
+library(ggpubr)
+library(moments)
+
+ggdensity(net_blocks_intersect, x = "pop_acre_rate", fill = "lightgray", title = "pop_acre_rate") +
+  scale_x_continuous(limits = c(-5, 20)) +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+#log transformation - 
+net_blocks_intersect$pop_acre_rate <- log10(net_blocks_intersect$pop_acre_rate)
+
+ggdensity(net_blocks_intersect, x = "pop_acre_rate", fill = "lightgray", title = "pop_acre_rate") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+skewness(net_blocks_intersect$pop_acre_rate, na.rm = TRUE)
+g=cps$GEOID
+barplot(g.freq)    
+
+ggplot(cps, aes(x=g, y=g.freq)) + geom_bar(stat="identity") + 
+  labs(x="GEOID", y="Freq")
+
+data <- cps %>% group_by(G3est()) %>% summarize(n=n()) %>% mutate(freq=n/sum(n)) 
+
+ggplot(data, aes(x=Stars, fill = Condition, group = Condition)) + geom_bar(aes(y=freq), stat="identity", position = "dodge")
+
+
+
+cps1<- cps%>% count("GEOID")
+ggplot(cps1, aes(x = factor(GEOID))) +
+  geom_bar()
+
+plot(incidents_shp)
+
